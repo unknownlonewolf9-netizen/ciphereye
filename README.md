@@ -11,3 +11,6 @@ Modular OSINT intelligence platform with FastAPI backend
    docker compose exec backend python -m app.manage your-email
 
    to register a new user go to http://localhost:8502
+
+
+start.sh file contains all the information and codes to run the website you just need to run it 
