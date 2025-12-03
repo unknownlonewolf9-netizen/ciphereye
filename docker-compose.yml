@@ -10,22 +10,23 @@ services:
       - pgdata:/var/lib/postgresql/data
     ports:
       - "5432:5432"
-
+  
   redis:
     image: redis:7
     ports:
       - "6379:6379"
-
+  
   backend:
     build: .
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    # Keeping the high-performance setting (4 workers)
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
     ports:
       - "8000:8000"
     environment:
       - DATABASE_URL=${DATABASE_URL}
       - REDIS_URL=${REDIS_URL}
-      - CELERY_BROKER_URL=${REDIS_URL}
-      - CELERY_RESULT_BACKEND=${REDIS_URL}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
     depends_on:
       - db
       - redis
@@ -34,17 +35,35 @@ services:
 
   worker:
     build: .
-    command: celery -A app.core.celery_app.celery_app worker --loglevel=info -Q default
+    command: celery -A app.core.celery_app.celery_app worker --loglevel=info
     environment:
       - DATABASE_URL=${DATABASE_URL}
       - REDIS_URL=${REDIS_URL}
-      - CELERY_BROKER_URL=${REDIS_URL}
-      - CELERY_RESULT_BACKEND=${REDIS_URL}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
     depends_on:
       - db
       - redis
     volumes:
       - ./:/app
+
+  admin_panel:
+    build: ./admin_dashboard
+    ports:
+      - "8501:8501"
+    environment:
+      - API_URL=http://backend:8000/api
+    depends_on:
+      - backend
+
+  player_dashboard:
+    build: ./player_dashboard
+    ports:
+      - "8502:8501" 
+    environment:
+      - API_URL=http://backend:8000/api
+    depends_on:
+      - backend
 
 volumes:
   pgdata:
